@@ -1,0 +1,31 @@
+catkin_install_python(PROGRAMS
+  rosgptparser_tb3_nav.py  # 路徑對應新結構
+  rosgptparser_turtlesim.py
+  rosgpt.py
+  rosgpt_client.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+cmake_minimum_required(VERSION 3.0.2)
+project(rosgpt)
+
+find_package(catkin REQUIRED COMPONENTS
+  rospy
+  std_msgs
+  geometry_msgs
+  nav_msgs
+  actionlib
+)
+
+catkin_package()
+
+catkin_install_python(PROGRAMS
+  rosgpt/rosgptparser_tb3_nav.py
+  rosgpt/rosgpt_client_node.py
+  rosgpt/rosgpt.py
+  rosgpt/rosgptparser_turtlesim.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(DIRECTORY launch/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+)

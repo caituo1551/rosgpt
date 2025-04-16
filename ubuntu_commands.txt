@@ -1,0 +1,98 @@
+
+###turtlebot topic檢查
+rostopic echo /cmd_vel
+
+###編輯和保存 .bashrc 文件(設定API)
+nano ~/.bashrc
+
+###重新加載 .bashr
+source ~/.bashrc
+
+###檢查運行中的節點
+rosnode list
+
+###再編譯
+cd ~/catkin_ws
+catkin_make
+source devel/setup.bash
+
+###ROSGPT啟動
+
+roscore
+
+rostopic echo /voice_cmd
+
+python3 ~/catkin_ws/src/rosgpt/rosgpt.py			rosrun rosgpt rosgpt.py
+
+rosrun turtlesim turtlesim_node
+
+rosrun rosgpt rosgptparser_turtlesim.py
+
+rosrun rosgpt rosgpt_client.py
+
+###
+roslaunch rosgpt rosgpt_amr.launch
+
+
+#IP 查詢
+1.  ip addr show
+
+2.  hostname -I
+
+#設定可儲存權限進入 .bash
+chmod +x <檔案名稱>
+
+#筆電連接工業電腦的IP設定腳本
+cd ~/catkin_ws/src/rosgpt
+./start_rosgpt_amr.sh
+# ssh連接AMR
+ssh ubt@192.168.50.158
+
+#local
+http://127.0.0.1:5000/
+http://AMR_IP:5000/
+#AMR
+http://192.168.50.158:5000/
+
+###有地點設置再使用
+rosrun rosgpt rosgptparser_tb3_nav.py
+
+-------------------------------------------------------------------------------------------------------------------------------- 
+###必要套件 
+sudo apt-get install ros-noetic-geometry-msgs ros-noetic-std-msgs ros-noetic-sensor-msgs ros-noetic-rospy ros-noetic-roscpp
+
+ 
+###確保 Python 3 環境中安裝了以下庫
+pip3 install openai flask flask-restful flask-cors pyttsx3
+
+
+###將程式複製到AMR： 使用 scp 將程式部署到AMR主機
+scp -r ~/catkin_ws/src/rosgpt <AMR_IP>:~/catkin_ws/src/
+
+
+###確保 OPENAI_API_KEY 環境變數已正確配置
+export OPENAI_API_KEY="your-openai-api-key"
+source ~/.bashrc
+###檢查API是否有成功加載至環境
+printenv OPENAI_API_KEY
+
+
+###flask HTTP 伺服器的設定
+sudo netstat -tuln | grep 5000
+如果發現該埠被占用，可修改程式中的 Flask 啟動埠：
+app.run(debug=True, host='0.0.0.0', port=<new-port-number>)
+
+###設定 ROS_MASTER_URI 和 ROS_HOSTNAME
+export ROS_MASTER_URI=http://<主機IP>:11311
+export ROS_HOSTNAME=<AMR IP>
+
+
+###重新編譯工作空間： SSH進入AMR主機並編譯
+cd ~/catkin_ws
+catkin_make
+source devel/setup.bash
+
+###檢查網路連通性
+ping 192.168.191.147
+
+http://127.0.0.1:5000/

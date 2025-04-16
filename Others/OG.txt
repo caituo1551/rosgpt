@@ -1,0 +1,514 @@
+// script.js
+
+// 全域變數
+let recognition;
+let outputDiv;
+
+const API_BASE_URL = 
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? "http://localhost:5000/rosgpt"
+    : "http://192.168.50.158:5000/rosgpt";  // <-- 這裡換成您AMR主機IP
+
+// 初始化 Web Speech API
+function initialize() {
+  recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition.interimResults = true;
+  recognition.continuous = true;
+  recognition.lang = 'zh-TW';
+
+  recognition.onresult = function (event) {
+    let interimTranscript = '';
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      if (event.results[i].isFinal) {
+        // 最終辨識結果
+        outputDiv.innerHTML += '<p>' + event.results[i][0].transcript + '</p>';
+      } else {
+        // 中間過渡辨識結果
+        interimTranscript += event.results[i][0].transcript;
+      }
+    }
+    document.getElementById('interimOutput').innerText = interimTranscript;
+  };
+
+  recognition.onerror = function (event) {
+    console.error('Recognition error:', event.error);
+  };
+}
+
+// 開始錄音
+function startRecording() {
+  outputDiv = document.getElementById('output');
+  outputDiv.innerHTML = '';
+  recognition.start();
+}
+
+// 停止錄音
+function stopRecording() {
+  recognition.stop();
+}
+
+function speak(text) {
+  // 
+}
+
+
+// 語音送指令函式
+async function sendToRobot() {
+  let command = document.getElementById('output').innerText;
+  console.log('Voice Command to send:', command);
+
+  try {
+    let response = await fetch(API_BASE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: new URLSearchParams({
+        text_command: command
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    let jsonResponse = await response.json();
+    console.log("Received response from robot:", jsonResponse);
+
+    if (jsonResponse.error) {
+      outputDiv.innerHTML += `<p>Error: ${jsonResponse.error}</p>`;
+    } else if (jsonResponse.response) {
+      outputDiv.innerHTML += '<p>Robot response: ' + JSON.stringify(jsonResponse.response) + '</p>';
+      speak("Robot response: " + JSON.stringify(jsonResponse.response));
+    } else {
+      outputDiv.innerHTML += '<p>Unexpected server response</p>';
+    }
+  } catch (error) {
+    console.error("Error sending command to robot:", error);
+    outputDiv.innerHTML += '<p>Error: Failed to communicate with robot</p>';
+  }
+}
+
+// ===== 新增文字輸入欄位之送指令函式 =====
+async function sendTextCommandToRobot() {
+  let textInput = document.getElementById('textCommand');
+  let command = textInput.value.trim();
+  if (!command) {
+    console.warn("尚未輸入文字指令！");
+    return;
+  }
+
+  console.log('文字指令:', command);
+  try {
+    let response = await fetch("http://localhost:5000/rosgpt", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: new URLSearchParams({
+        text_command: command
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    let jsonResponse = await response.json();
+    console.log("Received response from robot (textCommand):", jsonResponse);
+
+    if (jsonResponse.error) {
+      outputDiv.innerHTML += `<p>Error: ${jsonResponse.error}</p>`;
+    } else if (jsonResponse.response) {
+      outputDiv.innerHTML += `<p>Robot response: ${JSON.stringify(jsonResponse.response)}</p>`;
+      speak("Robot response: " + JSON.stringify(jsonResponse.response));
+    } else {
+      outputDiv.innerHTML += `<p>Unexpected response: ${JSON.stringify(jsonResponse)}</p>`;
+    }
+
+  } catch (error) {
+    console.error("Error sending text command to robot:", error);
+    outputDiv.innerHTML += `<p>[Error] Failed to communicate with robot</p>`;
+  }
+}
+
+// 初始化
+window.onload = function () {
+  outputDiv = document.getElementById('output');
+  initialize();
+};
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ROSGPT</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .btn,
+    .btn-large {
+      background-color: #007bff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>ROSGPT</h1>
+    <p>Click the "Start Recording" button and speak your command. Then click the "Stop Recording" button ...</p>
+
+    <!-- 三個按鈕 -->
+    <a id="startBtn" class="btn-large waves-effect waves-light" onclick="startRecording()">Start Recording</a>
+    <a id="stopBtn" class="btn-large waves-effect waves-light" onclick="stopRecording()">Stop Recording</a>
+    <a id="sendBtn" class="btn-large waves-effect waves-light" onclick="sendToRobot()">Send to Robot</a>
+
+    <!-- 文字指令輸入區 -->
+    <div class="row" style="margin-top: 20px;">
+      <div class="col s12 m8">
+        <label for="textCommand">文字指令輸入:</label>
+        <input type="text" id="textCommand" placeholder="輸入指令..." />
+      </div>
+      <div class="col s12 m4">
+        <button class="btn-large waves-effect waves-light" style="margin-top: 25px;" 
+                onclick="sendTextCommandToRobot()">
+          傳送文字指令
+        </button>
+      </div>
+    </div>
+    
+    <div id="interimOutput" class="flow-text" style="color: gray;"></div>
+    <div id="output" class="flow-text"></div>
+  </div>
+
+
+  
+  <script src="/static/script.js"></script>
+
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+#!/usr/bin/env python3
+# 這是 rosgpt 套件的一部分，設計用於 ROS1。
+
+import os
+import json
+import openai
+import rospy
+from std_msgs.msg import String
+from flask_restful import Resource, Api
+from flask_cors import CORS
+import pyttsx3
+import threading
+from flask import render_template
+from flask import Flask, request, send_from_directory, jsonify
+import rospkg
+from queue import Queue
+
+
+# 初始化 Flask 應用程式並設定跨來源資源共享 (CORS) 策略
+app = Flask(__name__)
+CORS(app)
+api = Api(app)
+
+# 從環境變數中讀取 OpenAI API 金鑰
+openai_api_key = os.getenv('OPENAI_API_KEY')
+openai.api_key = openai_api_key
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  
+WEBAPP_DIR = os.path.join(BASE_DIR, 'webapp')
+
+
+
+class ROSGPTNode:
+    def __init__(self):
+        rospy.init_node('chatgpt_ros_node')  # 初始化 ROS 節點
+        self.publisher = rospy.Publisher('voice_cmd', String, queue_size=10)  # 宣告主題 voice_cmd
+
+    def publish_message(self, message):
+        """向主題 voice_cmd 發佈訊息"""
+        msg = String()
+        msg.data = message
+        self.publisher.publish(msg)  # 發佈訊息
+        rospy.loginfo(f"訊息已發佈: {msg.data}")  # 在日誌中記錄發佈的訊息
+
+def process_and_publish_chatgpt_response(chatgpt_ros_node, commands):
+    """逐一發佈來自 ChatGPT 的指令"""
+    for command in commands:
+        chatgpt_ros_node.publish_message(json.dumps(command))  # 將指令轉為 JSON 格式發佈
+        rospy.sleep(0.1)  # 防止指令發佈過快
+
+class ROSGPTProxy(Resource):
+    def __init__(self, chatgpt_ros_node):
+        self.chatgpt_ros_node = chatgpt_ros_node
+
+    def askGPT(self, text_command):
+        """
+        使用 GPT 生成 JSON 格式的指令
+        """
+        # 使用 Few-shot Learning 設定提示內容
+        prompt = '''
+        請以 JSON 陣列格式返回有效的指令，每個指令必須包含 "action" 和 "params"。
+        範例：
+        [
+            {"action": "move", "params": {"linear_speed": 1.0, "distance": 3.0, "is_forward": true}},
+            {"action": "rotate", "params": {"angular_velocity": 2.0, "angle": 90, "is_clockwise": true}}
+        ]
+        '''
+        prompt += f'\n使用者指令: {text_command}'  # 添加使用者指令
+
+        messages = [
+            {"role": "system", "content": "你是負責生成有效機器指令的助理。"},
+            {"role": "user", "content": prompt}
+        ]
+
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=messages,
+            )  # 向 GPT 發送請求
+        except openai.error.InvalidRequestError as e:
+            rospy.logerr(f"錯誤: {e}")  # 錯誤處理
+            return None
+        except Exception as e:
+            rospy.logerr(f"意外錯誤: {e}")
+            return None
+
+        # 提取 GPT 的回應內容
+        chatgpt_response = response.choices[0].message['content'].strip()
+        try:
+            commands = json.loads(chatgpt_response)  # 將 JSON 字串轉為 Python 資料結構
+            return commands
+        except json.JSONDecodeError:
+            rospy.logerr("無法解析 GPT 回應為 JSON 格式。")
+            rospy.loginfo(f"GPT 回應（原始內容）: {chatgpt_response}")  # 打印原始內容進行調試
+            return None
+
+    def post(self):
+        """
+        處理 HTTP POST 請求，生成並發佈 ROS 指令
+        """
+        text_command = request.form['text_command']  # 從請求中提取使用者指令
+        rospy.loginfo(f"[ROSGPT] 收到的指令: {text_command}")
+
+        
+
+        # 使用 GPT 生成機器指令
+        commands = self.askGPT(text_command)
+
+        if not commands:
+            return {'error': '無法從 GPT 回應中生成有效的 JSON 指令。'}
+
+        # 發佈生成的指令到 ROS
+        threading.Thread(target=process_and_publish_chatgpt_response, args=(self.chatgpt_ros_node, commands)).start()
+
+        # 返回指令作為 HTTP 回應
+        return jsonify({"response": commands})
+
+
+
+@app.route('/')
+def index():
+    return send_from_directory(WEBAPP_DIR, 'index.html')
+
+
+# Flask 在 debug=True 或預設狀態下，/static/ 會自動對應到 ./static 資料夾
+
+
+def main():
+    rospy.loginfo("啟動 ROSGPT 節點 (ROS 1)")
+    chatgpt_ros_node = ROSGPTNode()  # 初始化 ROS 節點
+    api.add_resource(ROSGPTProxy, '/rosgpt', resource_class_args=(chatgpt_ros_node,))  # 將路由添加到 API
+    app.run(debug=True, host='0.0.0.0', port=5000)  # 啟動 Flask 應用程式
+
+if __name__ == '__main__':
+    main()
+
+
+
+
+
+
+
+### parser
+#!/usr/bin/env python3
+# This file is part of the rosgpt package for ROS1.
+# 用於實體 AMR，控制 move_base 或 /cmd_vel 並訂閱 hdl_localization 提供的 /nav_pose
+
+import rospy
+import actionlib
+import math
+import json
+from std_msgs.msg import String
+from geometry_msgs.msg import PoseStamped, Twist
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+from tf.transformations import quaternion_from_euler, euler_from_quaternion
+
+class AMRNavigator:
+    def __init__(self):
+        rospy.init_node('amr_navigator', anonymous=True)
+
+        self.use_map_mode = False  # 預設為 manual mode
+
+        self.cmd_sub = rospy.Subscriber('/voice_cmd', String, self.voice_cmd_callback)
+        self.nav_pose = None
+        rospy.Subscriber('/nav_pose', PoseStamped, self.nav_pose_callback)
+
+        self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
+        rospy.loginfo("等待連接 move_base action server ...")
+        self.client.wait_for_server(rospy.Duration(1.0))  # 預先等待，提升模式判斷成功率
+
+        self.vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+
+    def nav_pose_callback(self, msg):
+        self.nav_pose = msg
+
+    def check_map_mode_available(self):
+        try:
+            server_ready = self.client.wait_for_server(rospy.Duration(1.0))
+            if not server_ready:
+                return False
+
+            wait_start = rospy.Time.now()
+            while self.nav_pose is None and (rospy.Time.now() - wait_start).to_sec() < 1.0:
+                rospy.sleep(0.1)
+
+            return self.nav_pose is not None
+        except Exception as e:
+            rospy.logwarn(f"[模式偵測] 檢查 map mode 時發生錯誤：{e}")
+            return False
+
+    def voice_cmd_callback(self, msg):
+        try:
+            commands = json.loads(msg.data)
+            if isinstance(commands, dict):
+                commands = [commands]
+
+            rospy.loginfo(f"接收到指令：{commands}")
+            self.use_map_mode = self.check_map_mode_available()
+            rospy.loginfo(f"[模式判斷] 啟用模式：{'map mode' if self.use_map_mode else 'manual mode'}")
+
+            for command in commands:
+                action = command.get('action')
+                params = command.get('params', {})
+
+                if action == 'goto':
+                    if self.use_map_mode:
+                        self.goto_target(
+                            x=params.get('x', 0.0),
+                            y=params.get('y', 0.0),
+                            yaw=params.get('yaw', 0.0)
+                        )
+                    else:
+                        rospy.logwarn("目前未偵測到地圖，無法執行導航")
+
+                elif action in ['move', 'rotate']:
+                    if self.use_map_mode:
+                        self.cmd_vel_control_with_pose(action, params)
+                    else:
+                        self.cmd_vel_control_direct(action, params)
+
+                else:
+                    rospy.logwarn(f"未知的 action: {action}")
+
+        except Exception as e:
+            rospy.logerr(f"解析或執行指令時發生錯誤：{e}")
+
+    def goto_target(self, x, y, yaw):
+        goal = MoveBaseGoal()
+        goal.target_pose.header.frame_id = "map"
+        goal.target_pose.header.stamp = rospy.Time.now()
+
+        goal.target_pose.pose.position.x = x
+        goal.target_pose.pose.position.y = y
+        goal.target_pose.pose.position.z = 0.0
+
+        q = quaternion_from_euler(0, 0, yaw)
+        goal.target_pose.pose.orientation.x = q[0]
+        goal.target_pose.pose.orientation.y = q[1]
+        goal.target_pose.pose.orientation.z = q[2]
+        goal.target_pose.pose.orientation.w = q[3]
+
+        rospy.loginfo(f"前往目標點：x={x}, y={y}, yaw={yaw}")
+        self.client.send_goal(goal)
+        self.client.wait_for_result()
+        rospy.loginfo("導航任務完成！")
+
+    def cmd_vel_control_with_pose(self, action, params):
+        if self.nav_pose is None:
+            rospy.logwarn("尚未收到 /nav_pose，無法執行控制")
+            return
+
+        q = self.nav_pose.pose.orientation
+        _, _, yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])
+        current_x = self.nav_pose.pose.position.x
+        current_y = self.nav_pose.pose.position.y
+
+        if action == 'move':
+            distance = params.get('distance', 1.0)
+            is_forward = params.get('is_forward', True)
+            direction = 1.0 if is_forward else -1.0
+            target_x = current_x + direction * distance * math.cos(yaw)
+            target_y = current_y + direction * distance * math.sin(yaw)
+            rospy.loginfo(f"[map mode] 相對移動：目標 x={target_x}, y={target_y}")
+            self.goto_target(target_x, target_y, yaw)
+
+        elif action == 'rotate':
+            angle = params.get('angle', 90)
+            is_clockwise = params.get('is_clockwise', True)
+            angle_rad = math.radians(angle)
+            target_yaw = yaw - angle_rad if is_clockwise else yaw + angle_rad
+            rospy.loginfo(f"[map mode] 相對旋轉：目標 yaw={target_yaw}")
+            self.goto_target(current_x, current_y, target_yaw)
+
+    def cmd_vel_control_direct(self, action, params):
+        twist = Twist()
+        rate = rospy.Rate(10)
+
+        if action == 'move':
+            linear_speed = params.get('linear_speed', 0.3)
+            distance = params.get('distance', 1.0)
+            is_forward = params.get('is_forward', True)
+            duration = distance / linear_speed if linear_speed != 0 else 0
+            twist.linear.x = linear_speed if is_forward else -linear_speed
+
+        elif action == 'rotate':
+            angular_velocity = params.get('angular_velocity', 0.8)
+            angle = params.get('angle', 90)
+            is_clockwise = params.get('is_clockwise', True)
+            angle_rad = math.radians(angle)
+            duration = angle_rad / angular_velocity if angular_velocity != 0 else 0
+            twist.angular.z = -angular_velocity if is_clockwise else angular_velocity
+
+        rospy.loginfo(f"[manual mode] 透過 /cmd_vel 發佈 {action}，持續 {duration:.2f} 秒")
+        start_time = rospy.Time.now().to_sec()
+        while rospy.Time.now().to_sec() - start_time < duration:
+            self.vel_pub.publish(twist)
+            rate.sleep()
+
+        self.vel_pub.publish(Twist())
+
+
+if __name__ == '__main__':
+    try:
+        nav = AMRNavigator()
+        rospy.spin()
+    except rospy.ROSInterruptException:
+        pass
+
+

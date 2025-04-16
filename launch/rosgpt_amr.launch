@@ -1,0 +1,9 @@
+<launch>
+  <!-- 啟動 GPT 後端主伺服器 -->
+  <node name="rosgpt_server" pkg="rosgpt" type="rosgpt.py" output="screen" />
+
+  <!-- 啟動 AMR 控制解析器 -->
+  <node name="rosgpt_amr_parser" pkg="rosgpt" type="rosgptparser_amr.py" output="screen" />
+
+  <!-- 可選：開啟 /voice_cmd topic 可視化（例如用 rqt_topic） -->
+</launch>
