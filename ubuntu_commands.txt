@@ -98,4 +98,6 @@ ping 192.168.191.147
 http://127.0.0.1:5000/
 
 
-
+git add .
+gti commit -m "message"
+git push -u origin main
