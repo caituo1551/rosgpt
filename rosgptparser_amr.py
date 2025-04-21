@@ -34,12 +34,7 @@ class AMRNavigator:
             rospy.logwarn("⚠️ 無法連接 move_base action server！請確認是否已啟動")
 
     def pose_nav_callback(self, msg):
-        rospy.loginfo("[DEBUG] pose_nav_callback() 被呼叫")
         self.pose_nav = msg
-        pos = msg.pose.pose.position
-        ori = msg.pose.pose.orientation
-        _, _, yaw = euler_from_quaternion([ori.x, ori.y, ori.z, ori.w])
-        rospy.loginfo(f"[pose_nav] x: {pos.x:.2f}, y: {pos.y:.2f}, z: {pos.z:.2f}, yaw: {math.degrees(yaw):.1f}°")
 
     def voice_cmd_callback(self, msg):
         try:
